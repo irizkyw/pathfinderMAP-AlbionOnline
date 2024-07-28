@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinding with Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pathfinding with Images</h1>
+        <form id="upload-form">
+            <label for="image">Upload an image:</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
+            <button type="submit">Upload Image</button>
+        </form>
+
+        <div id="pathfinding-form" style="display: none;">
+            <h2>Find Path</h2>
+            <label for="start-x">Start X:</label>
+            <input type="number" id="start-x" name="start-x" required>
+            <label for="start-y">Start Y:</label>
+            <input type="number" id="start-y" name="start-y" required>
+            <br>
+            <label for="end-x">End X:</label>
+            <input type="number" id="end-x" name="end-x" required>
+            <label for="end-y">End Y:</label>
+            <input type="number" id="end-y" name="end-y" required>
+            <br>
+            <button id="find-path">Find Path</button>
+        </div>
+
+        <div id="result">
+            <h2>Pathfinding Result</h2>
+            <img id="path-image" src="" alt="Path Image" style="display: none;">
+            <div id="error-message" style="color: red;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            formData.append('image', document.getElementById('image').files[0]);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('pathfinding-form').style.display = 'block';
+                    document.getElementById('error-message').textContent = '';
+                } else {
+                    document.getElementById('error-message').textContent = data.error;
+                }
+            } catch (error) {
+                document.getElementById('error-message').textContent = 'Failed to upload image.';
+            }
+        });
+
+        document.getElementById('find-path').addEventListener('click', async function() {
+            const startX = parseInt(document.getElementById('start-x').value, 10);
+            const startY = parseInt(document.getElementById('start-y').value, 10);
+            const endX = parseInt(document.getElementById('end-x').value, 10);
+            const endY = parseInt(document.getElementById('end-y').value, 10);
+
+            const pathData = {
+                gridData: [], // Load your grid data here if needed
+                start: { x: startX, y: startY },
+                end: { x: endX, y: endY }
+            };
+
+            try {
+                const response = await fetch('/find-path', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(pathData)
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('path-image').src = '/path-image';
+                    document.getElementById('path-image').style.display = 'block';
+                    document.getElementById('error-message').textContent = '';
+                } else {
+                    document.getElementById('error-message').textContent = data.error;
+                }
+            } catch (error) {
+                document.getElementById('error-message').textContent = 'Failed to find path.';
+            }
+        });
+    </script>
+</body>
+</html>

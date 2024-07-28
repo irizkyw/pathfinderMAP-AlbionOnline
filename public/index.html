@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinding</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pathfinding</h1>
+    <input type="file" id="fileInput">
+    <canvas id="canvas"></canvas>
+    <br>
+    <label for="startX">Start X:</label>
+    <input type="number" id="startX" value="0" readonly>
+    <label for="startY">Start Y:</label>
+    <input type="number" id="startY" value="0" readonly>
+    <label for="endX">End X:</label>
+    <input type="number" id="endX" value="10" readonly>
+    <label for="endY">End Y:</label>
+    <input type="number" id="endY" value="10" readonly>
+    <label for="heuristic">Heuristic:</label>
+    <select id="heuristic">
+        <option value="manhattan">Manhattan</option>
+        <option value="euclidean">Euclidean</option>
+        <option value="octile">Octile</option>
+        <option value="chebyshev">Chebyshev</option>
+    </select>
+    <button id="findPathButton">Find Path</button>
+    <script>
+        let isSettingStart = true;
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const startXInput = document.getElementById('startX');
+        const startYInput = document.getElementById('startY');
+        const endXInput = document.getElementById('endX');
+        const endYInput = document.getElementById('endY');
+
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            if (isSettingStart) {
+                startXInput.value = Math.round(x);
+                startYInput.value = Math.round(y);
+                isSettingStart = false;
+                drawPoint(x, y, 'green'); // Draw start point
+            } else {
+                endXInput.value = Math.round(x);
+                endYInput.value = Math.round(y);
+                isSettingStart = true;
+                drawPoint(x, y, 'red'); // Draw end point
+            }
+        });
+
+        function drawPoint(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.error) {
+                alert(result.error);
+                return;
+            }
+
+            console.log('Received clusters:', result.clusters);
+
+            // Save clusters to localStorage for use in pathfinding
+            localStorage.setItem('clusters', JSON.stringify(result.clusters));
+
+            // Display uploaded image
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            };
+        });
+
+        document.getElementById('findPathButton').addEventListener('click', async () => {
+            const clusters = JSON.parse(localStorage.getItem('clusters'));
+            const startX = parseInt(startXInput.value, 10);
+            const startY = parseInt(startYInput.value, 10);
+            const endX = parseInt(endXInput.value, 10);
+            const endY = parseInt(endYInput.value, 10);
+            const heuristicType = document.getElementById('heuristic').value;
+
+            const response = await fetch('/find-path', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clusters, startX, startY, endX, endY, heuristicType })
+            });
+            const result = await response.json();
+
+            if (result.error) {
+                alert(result.error);
+                return;
+            }
+
+            console.log('Received path:', result.path);
+
+            // Draw the path on the canvas
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            for (const [x, y] of result.path) {
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        });
+    </script>
+</body>
+</html>
